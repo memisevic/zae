@@ -26,10 +26,10 @@ class Zae(object):
             self._canvas[t] = self._canvas[t-1] + T.dot(self._hiddens, self.W.T) + self.bvis 
 
         if self.vistype == 'binary':
-            self._canvas = T.nnet.sigmoid(self._canvas)
-            costpercase = -T.sum(self.inputs*T.log(self._canvas) + (1-self.inputs)*T.log(1-self._canvas), axis=1) 
+            self._canvas[-1] = T.nnet.sigmoid(self._canvas[-1])
+            costpercase = -T.sum(self.inputs*T.log(self._canvas[-1]) + (1-self.inputs)*T.log(1-self._canvas[-1]), axis=1) 
         elif self.vistype == 'real':
-            costpercase = T.sum(0.5 * ((self.inputs - self._canvas)**2), axis=1) 
+            costpercase = T.sum(0.5 * ((self.inputs - self._canvas[-1])**2), axis=1) 
 
         self._cost = T.mean(costpercase)
         self._grads = T.grad(self._cost, self.params)
@@ -38,7 +38,7 @@ class Zae(object):
         self.grad = theano.function([self.inputs], T.grad(self._cost, self.params))
         self.prehiddens = theano.function([self.inputs], self._prehiddens)
         self.hiddens = theano.function([self.inputs], self._hiddens)
-        self.recons_from_prehiddens = theano.function([self._prehiddens, self._canvas], self._canvas)
+        self.recons_from_prehiddens = theano.function([self.inputs, self._prehiddens], self._canvas[-1])
         #self.recons_from_inputs = theano.function([self.inputs], self._canvas)
         self.selection = theano.function([self.inputs], (self._prehiddens > self.selectionthreshold))
 
