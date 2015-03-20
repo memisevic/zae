@@ -12,8 +12,10 @@ import theano.tensor as T
 #import graddescent_rewrite
 
 rng = numpy.random.RandomState(1)
-SMALL = 0.001
 numfeatures = 4096
+
+datafile = "/data/tinyimages/FirstMioTiny.npy"
+
 
 def pca_nowhite(data, dimstokeep):
     """ principal components analysis of data (columnwise in array data), retaining as many components as required to retain var_fraction of the variance 
@@ -25,37 +27,34 @@ def pca_nowhite(data, dimstokeep):
     forward_mapping = v[:,:dimstokeep]
     return backward_mapping.astype("float32"), forward_mapping.astype("float32"), numpy.dot(v[:,:dimstokeep].astype("float32"), backward_mapping), numpy.dot(forward_mapping, v[:,:dimstokeep].T.astype("float32"))
 
-pretrainimages = numpy.load("/data/tinyimages/FirstMioTiny.npy").reshape(-1,3,32,32).transpose(0,3,2,1).reshape(-1,32*32*3)
-pretrainimages = pretrainimages[rng.permutation(pretrainimages.shape[0])].astype("float32")/255.
+
+print "loading data"
+trainimages = numpy.load(datafile ).reshape(-1,3,32,32).transpose(0,3,2,1).reshape(-1,32*32*3)
+trainimages = trainimages[rng.permutation(trainimages.shape[0])].astype("float32")/255.
+meanstd = trainimages.std()
+trainimages -= trainimages.mean(1)[:,None]
+trainimages /= trainimages.std(1)[:,None] + meanstd
+trainimages_mean = trainimages.mean(0)[None,:]
+trainimages_std = trainimages.std(0)[None,:] 
+meanstd0 = trainimages_std.mean()
+trainimages -= trainimages_mean
+trainimages /= trainimages_std + meanstd0
 print "done"
 
 
-meanstd1 = alltrainimages.std()
-alltrainimages -= alltrainimages.mean(1)[:,None]
-alltrainimages /= alltrainimages.std(1)[:,None] + meanstd1
-pretrainimages -= pretrainimages.mean(1)[:,None]
-pretrainimages /= pretrainimages.std(1)[:,None] + meanstd1
-alltrainimages_mean = alltrainimages.mean(0)[None,:]
-alltrainimages_std = alltrainimages.std(0)[None,:] 
-meanstd0 = alltrainimages_std.mean()
-alltrainimages -= alltrainimages_mean
-alltrainimages /= alltrainimages_std + meanstd0
-pretrainimages -= alltrainimages_mean
-pretrainimages /= alltrainimages_std + meanstd0
 print "doing pca"
-#pca_backward, pca_forward, zca_backward, zca_forward = pca_nowhite(alltrainimages, 0.9999999)
-pca_backward, pca_forward, zca_backward, zca_forward = pca_nowhite(alltrainimages, 2000)
+#pca_backward, pca_forward, zca_backward, zca_forward = pca_nowhite(trainimages, 0.9999999)
+pca_backward, pca_forward, zca_backward, zca_forward = pca_nowhite(trainimages, 2000)
 print "done"
 print "dimensions retained:", pca_backward.shape[0]
-alltrainimages = numpy.dot(alltrainimages, pca_backward.T)
-pretrainimages = numpy.dot(pretrainimages, pca_backward.T)
+trainimages = numpy.dot(trainimages, pca_backward.T)
 
 
 print "instantiating model" 
-model = zae.Zae(numvis=alltrainimages.shape[1], numhid=numfeatures, vistype="real", init_features=0.01*alltrainimages[:numfeatures].T, selectionthreshold=1.0) #, normpenalty=0.01)
+model = zae.Zae(numvis=trainimages.shape[1], numhid=numfeatures, vistype="real", init_features=0.01*trainimages[:numfeatures].T, selectionthreshold=1.0) #, normpenalty=0.01)
 print "done"
 print "instantiating trainer"
-#trainer = graddescent_rewrite.SGD_Trainer(model=model, inputs=pretrainimages, batchsize=128, learningrate=0.01, gradient_clip_threshold=5.0, loadsize=300000)
+#trainer = graddescent_rewrite.SGD_Trainer(model=model, inputs=trainimages, batchsize=128, learningrate=0.01, gradient_clip_threshold=5.0, loadsize=300000)
 trainer = train.GraddescentMinibatch(model, trainpatches_theano, 100, learningrate=0.01, momentum=0.9)
 print "done"
 
