@@ -51,7 +51,7 @@ trainimages = numpy.dot(trainimages, pca_backward.T)
 
 
 print "instantiating model" 
-model = zae.Zae(numvis=trainimages.shape[1], numhid=numfeatures, vistype="real", init_features=0.01*trainimages[:numfeatures].T, selectionthreshold=1.0) #, normpenalty=0.01)
+model = zae.Zae(numvis=trainimages.shape[1], numhid=numfeatures, vistype="real", init_features=0.01*trainimages[:numfeatures].T, selectionthreshold=1.0) 
 print "done"
 print "instantiating trainer"
 #trainer = graddescent_rewrite.SGD_Trainer(model=model, inputs=trainimages, batchsize=128, learningrate=0.01, gradient_clip_threshold=5.0, loadsize=300000)
