@@ -2,7 +2,7 @@ import numpy
 import numpy.random
 import pylab
 from dispims_color import dispims_color
-import zae 
+import zaethroughtime
 import train
 import theano
 from theano.tensor.shared_randomstreams import RandomStreams
@@ -10,8 +10,8 @@ from theano.tensor.shared_randomstreams import RandomStreams
 rng = numpy.random.RandomState(1)
 theano_rng = RandomStreams(1)
 SMALL = 0.001
-patchsize = 20
-numfeatures = 400
+patchsize = 30 
+numfeatures = 900 
 
 
 import os
@@ -74,13 +74,17 @@ trainpatches_theano = theano.shared(trainpatches_whitened)
 print "done"
 
 #INSTANTIATE THE ZERO-BIAS AUTOENCODER
-model = zae.Zae(numvis=trainpatches_whitened.shape[1], numhid=numfeatures, vistype="real", init_features=0.1*trainpatches_whitened[:numfeatures].T, selectionthreshold=1.0)
+#model = zae.Zae(numvis=trainpatches_whitened.shape[1], numhid=numfeatures, vistype="real", init_features=0.1*trainpatches_whitened[:numfeatures].T, selectionthreshold=1.0)
+model = zaethroughtime.Zae(rng,numvis=trainpatches_whitened.shape[1], numhid=numfeatures, vistype="real", numsteps=8, init_features=0.1*trainpatches_whitened[:numfeatures].T, selectionthreshold=1.0)
+
+
 
 assert False, "preprocessing is done, may train now"
 
 
 #DO SOME STEPS WITH SMALL LEARNING RATE TO MAKE SURE THE INITIALIZATION IS IN A REASONABLE RANGE
 trainer = train.GraddescentMinibatch(model, trainpatches_theano, 100, learningrate=0.0001, momentum=0.9)
+#trainer = graddescent_rewrite.SGD_Trainer(model, trainpatches_whitened, batchsize=128, learningrate=0.001, momentum=0.9, loadsize=30000, gradient_clip_threshold=5.0)
 trainer.step(); trainer.step(); trainer.step() 
 
 #TRAIN THE MODEL FOR REAL, AND SHOW FILTERS 
@@ -94,6 +98,16 @@ for epoch in xrange(100):
         #trainer.set_learningrate(trainer.learningrate*0.8)
         dispims_color(numpy.dot(model.W.get_value().T, pca_forward.T).reshape(-1, patchsize, patchsize, 3), 1)
         pylab.draw(); pylab.show()
+
+
+
+#SHOW SOME EXAMPLES 
+subplot(1,2,2); dispims_color(numpy.dot(model.recons_from_prehiddens(trainpatches_whitened[:25], 0.5*randn(25,model.numhid).astype("float32")), pca_forward.T).reshape(-1, patchsize, patchsize, 3), 1)
+#AND SOME SAMPLED RECONSTRUCTIONS
+subplot(1,2,2); dispims_color(numpy.dot(model.recons_from_prehiddens(trainpatches_whitened[:25], 0.5*randn(25,model.numhid).astype("float32")), pca_forward.T).reshape(-1, patchsize, patchsize, 3), 1)
+#OR SOME RANDOM SAMPLES 
+#subplot(1,2,2); dispims_color(numpy.dot(model.recons_from_prehiddens(1.0*randn(100,92).astype("float32"), 0.24*randn(100,model.numhid).astype("float32")), pca_forward.T).reshape(-1, patchsize, patchsize, 3), 1)
+
 
 
 
