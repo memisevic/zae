@@ -9,13 +9,9 @@ import zae
 import train
 import theano
 import theano.tensor as T
-import logreg 
-import LogisticRegression_theano 
-from theano.tensor.shared_randomstreams import RandomStreams
-import graddescent_rewrite
+#import graddescent_rewrite
 
 rng = numpy.random.RandomState(1)
-theano_rng = RandomStreams(1)
 SMALL = 0.001
 numfeatures = 4096
 
@@ -64,23 +60,18 @@ trainer = train.GraddescentMinibatch(model, trainpatches_theano, 100, learningra
 print "done"
 
 
-if TRAINMODEL:
-    for epoch in xrange(500):
-        trainer.step()
-        if True: #$epoch % 10 == 0:
-            pylab.clf()
-            dispims_color(numpy.dot(model.W.get_value().T, pca_forward.T).reshape(-1, 32, 32, 3), 1)
-            pylab.draw(); pylab.show()
-        if epoch == 400:
-            trainer.set_learningrate(trainer.learningrate*0.5)
-        if epoch == 450:
-            trainer.set_learningrate(trainer.learningrate*0.5)
+for epoch in xrange(500):
+    trainer.step()
+    if True: #$epoch % 10 == 0:
+        pylab.clf()
+        dispims_color(numpy.dot(model.W.get_value().T, pca_forward.T).reshape(-1, 32, 32, 3), 1)
+        pylab.draw(); pylab.show()
+    if epoch == 400:
+        trainer.set_learningrate(trainer.learningrate*0.5)
+    if epoch == 450:
+        trainer.set_learningrate(trainer.learningrate*0.5)
 
-    pylab.savefig("2015_03_03_numfeatures"+str(numfeatures)+"threshold"+str(threshold)+"_trainoncifar.png")
-    model.save("2015_03_03_numfeatures"+str(numfeatures)+"threshold"+str(threshold)+"_trainoncifar")
-else:
-    model.load("2015_03_03_numfeatures"+str(numfeatures)+"threshold"+str(threshold)+"_trainoncifar.npy")
-
-
+#pylab.savefig("2015_03_03_numfeatures"+str(numfeatures)+"threshold"+str(threshold)+"_trainoncifar.png")
+#model.save("2015_03_03_numfeatures"+str(numfeatures)+"threshold"+str(threshold)+"_trainoncifar")
 
 
