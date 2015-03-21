@@ -13,17 +13,19 @@ class Zae(object):
 
         self.W_init = init_features.astype(theano.config.floatX)
         self.W = theano.shared(value = self.W_init, name='W')
+        self.Whidhid = theano.shared(value = 0.01*self.rng.randn(self.numhid, self.numhid).astype(theano.config.floatX), name='Whidhid')
         self.Wfeedback = theano.shared(value = self.W_init+0.01*self.rng.randn(self.numvis, self.numhid).astype(theano.config.floatX), name='Wfeedback')
         self.bvis = theano.shared(value=numpy.zeros(numvis, dtype=theano.config.floatX), name='bvis')
         self.inputs = T.matrix(name = 'inputs') 
         #self.params = [self.W, self.bvis]
         self.params = [self.W, self.Wfeedback]
 
-        self._canvas = [T.zeros((self.inputs.shape))] + [None] * (self.numsteps-1)
+        self._canvas  = [T.zeros(self.inputs.shape)] + [None] * (self.numsteps-1)
+        self._hiddens = [T.zeros((self.inputs.shape[0], self.numhid))] + [None] * (self.numsteps-1)
         for t in range(1, numsteps):
-            self._prehiddens = T.dot(self.inputs, self.W) 
-            self._hiddens = (self._prehiddens > self.selectionthreshold) * self._prehiddens + T.dot(self._canvas[t-1], self.Wfeedback)
-            self._canvas[t] = self._canvas[t-1] + T.dot(self._hiddens, self.W.T) + self.bvis 
+            self._prehiddens = T.dot(self.inputs, self.W) + T.dot(self._hiddens[t-1], self.Whidhid)
+            self._hiddens[t] = (self._prehiddens > self.selectionthreshold) * self._prehiddens + T.dot(self._canvas[t-1], self.Wfeedback)
+            self._canvas[t] = self._canvas[t-1] + T.dot(self._hiddens[t], self.W.T) + self.bvis 
 
         if self.vistype == 'binary':
             self._canvas[-1] = T.nnet.sigmoid(self._canvas[-1])
@@ -36,8 +38,8 @@ class Zae(object):
 
         self.cost = theano.function([self.inputs], self._cost)
         self.grad = theano.function([self.inputs], T.grad(self._cost, self.params))
-        self.prehiddens = theano.function([self.inputs], self._prehiddens)
-        self.hiddens = theano.function([self.inputs], self._hiddens)
+        #self.prehiddens = theano.function([self.inputs], self._prehiddens)
+        #self.hiddens = theano.function([self.inputs], self._hiddens)
         self.recons_from_prehiddens = theano.function([self.inputs, self._prehiddens], self._canvas[-1])
         #self.recons_from_inputs = theano.function([self.inputs], self._canvas)
         self.selection = theano.function([self.inputs], (self._prehiddens > self.selectionthreshold))
