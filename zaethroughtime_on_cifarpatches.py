@@ -11,7 +11,7 @@ rng = numpy.random.RandomState(1)
 theano_rng = RandomStreams(1)
 SMALL = 0.001
 patchsize = 30 
-numfeatures = 900 
+numfeatures = 100 
 
 
 import os
