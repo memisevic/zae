@@ -68,7 +68,7 @@ trainpatches_mean = trainpatches.mean(0)[None,:]
 trainpatches_std = trainpatches.std(0)[None,:] 
 trainpatches -= trainpatches_mean
 trainpatches /= trainpatches_std + 0.1 * meanstd
-pca_backward, pca_forward, zca_backward, zca_forward = pca(trainpatches, 0.9, whiten=True)
+pca_backward, pca_forward, zca_backward, zca_forward = pca(trainpatches, 0.95, whiten=True)
 trainpatches_whitened = numpy.dot(trainpatches, pca_backward.T).astype("float32")
 trainpatches_theano = theano.shared(trainpatches_whitened)
 print "done"

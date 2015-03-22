@@ -1,6 +1,7 @@
 import numpy
 import theano
 import theano.tensor as T
+from theano.tensor.shared_randomstreams import RandomStreams
 
 class Zae(object):
     def __init__(self, rng, numvis, numhid, vistype, numsteps, init_features, selectionthreshold=1.0):
@@ -9,30 +10,38 @@ class Zae(object):
         self.vistype = vistype
         self.numsteps = numsteps
         self.rng = rng
+        self.theano_rng = RandomStreams(1)
         self.selectionthreshold = theano.shared(value=selectionthreshold, name='selectionthreshold')
+        self.corruption_level = 0.5
 
         self.Wz = theano.shared(value=init_features.astype(theano.config.floatX), name='Wz')
         self.Wlin = theano.shared(value=0.1*self.rng.randn(self.numhid, self.numvis).astype(theano.config.floatX), name='Wlin')
-        self.Whiddechidenc = theano.shared(value=0.1*self.rng.randn(self.numhid, self.numhid).astype(theano.config.floatX), name='Whiddechidenc')
-        self.Whiddechiddec = theano.shared(value=0.1*self.rng.randn(self.numhid, self.numhid).astype(theano.config.floatX), name='Whiddechiddec')
-        self.Whidenchidenc = theano.shared(value=0.1*self.rng.randn(self.numhid, self.numhid).astype(theano.config.floatX), name='Whidenchidenc')
+        self.Wfeedbackdecenc = theano.shared(value=0.1*self.rng.randn(self.numhid, self.numhid).astype(theano.config.floatX), name='Wfeedbackdecenc')
+        self.Wfeedbackdecdec = theano.shared(value=0.1*self.rng.randn(self.numhid, self.numhid).astype(theano.config.floatX), name='Wfeedbackdecdec')
+        self.Wfeedbackencenc = theano.shared(value=0.1*self.rng.randn(self.numhid, self.numhid).astype(theano.config.floatX), name='Wfeedbackencenc')
         self.bvis = theano.shared(value=numpy.zeros(numvis, dtype=theano.config.floatX), name='bvis')
+        self.bhidZ = theano.shared(value=numpy.zeros(numhid, dtype=theano.config.floatX), name='bhidZ')
+        self.bhidZrecons = theano.shared(value=numpy.zeros(numhid, dtype=theano.config.floatX), name='bhidZrecons')
         self.inputs = T.matrix(name = 'inputs') 
-        self.params = [self.Wz, self.Wlin, self.Whiddechidenc, self.Whiddechiddec, self.Whidenchidenc, self.bvis]
+        self.params = [self.Wz, self.Wlin, self.Wfeedbackdecenc, self.Wfeedbackdecdec, self.Wfeedbackencenc, self.bvis, self.bhidZrecons, self.bhidZ]
 
-        self._canvas  = T.zeros(self.inputs.shape)
-        self._preZ    = [T.zeros((self.inputs.shape[0], self.numhid))] + [None] * (self.numsteps-1)
-        self._Z       = [T.zeros((self.inputs.shape[0], self.numhid))] + [None] * (self.numsteps-1)
-        self._preZrecons = [T.zeros((self.inputs.shape[0], self.numhid))] + [None] * (self.numsteps-1)
-        self._Zrecons = [T.zeros((self.inputs.shape[0], self.numhid))] + [None] * (self.numsteps-1)
-        self._L       = [T.zeros((self.inputs.shape[0], self.numvis))] + [None] * (self.numsteps-1)
-        for t in range(1, numsteps):
-            self._preZ[t] = T.dot(self.inputs, self.Wz) + T.dot(self._Zrecons[t-1], self.Whiddechidenc) + T.dot(self._preZ[t-1], self.Whidenchidenc)
-            self._Z[t] = (self._preZ[t] > self.selectionthreshold) * self._preZ[t]
+        self._canvas    = T.zeros(self.inputs.shape)
+        self._preZ      = [T.zeros((self.inputs.shape[0], self.numhid))] + [None] * (self.numsteps-1)
+        self._Z         = [T.zeros((self.inputs.shape[0], self.numhid))] + [None] * (self.numsteps-1)
+        self._preZrecons= [T.zeros((self.inputs.shape[0], self.numhid))] + [None] * (self.numsteps-1)
+        self._Zrecons   = [T.zeros((self.inputs.shape[0], self.numhid))] + [None] * (self.numsteps-1)
+        self._L         = [T.zeros((self.inputs.shape[0], self.numvis))] + [None] * (self.numsteps-1)
+        for t in range (1, numsteps):
+            self._corruptedinputs = self.theano_rng.binomial(size=self.inputs.shape, n=1, p=1.0-self.corruption_level, dtype=theano.config.floatX) * self.inputs
+            #self._corruptedinputs = self.theano_rng.normal(size=self.inputs.shape, avg=0.0, std=1.0, dtype=theano.config.floatX) + self.inputs
+            self._preZ[t] = T.dot(self._corruptedinputs, self.Wz) + T.dot(self._preZrecons[t-1], self.Wfeedbackdecenc) + T.dot(self._preZ[t-1], self.Wfeedbackencenc) + self.bhidZ
+            #self._Z[t] = (self._preZ[t] > self.selectionthreshold) * self._preZ[t]
+            self._Z[t] = T.nnet.sigmoid(self._preZ[t])
             self._L[t] = T.dot(self._Z[t], self.Wlin) 
-            self._preZrecons[t] = T.dot(self._L[t], self.Wlin.T) + T.dot(self._preZrecons[t-1], self.Whiddechiddec)
-            self._Zrecons[t] = (self._preZrecons[t] > self.selectionthreshold) * self._preZrecons[t]
-            self._canvas += T.dot(self._Zrecons[t],self.Wz.T) 
+            self._preZrecons[t] = T.dot(self._L[t], self.Wlin.T) + T.dot(self._preZrecons[t-1], self.Wfeedbackdecdec) + self.bhidZrecons
+            #self._Zrecons[t] = (self._preZrecons[t] > self.selectionthreshold) * self._preZrecons[t]
+            self._Zrecons[t] = T.nnet.sigmoid(self._preZrecons[t])
+            self._canvas += T.dot(self._Zrecons[t], self.Wz.T) 
         self._canvas += self.bvis 
 
         if self.vistype == 'binary':
@@ -48,8 +57,8 @@ class Zae(object):
         self.grad = theano.function([self.inputs], T.grad(self._cost, self.params))
         #self.prehiddens = theano.function([self.inputs], self._prehiddens)
         #self.hiddens = theano.function([self.inputs], self._hiddens)
-        #self.recons_from_prehiddens = theano.function([self.inputs, self._prehiddens], self._canvas[-1])
-        self.recons_from_inputs = theano.function([self.inputs], self._canvas[-1])
+        #self.recons_from_prehiddens = theano.function([self.inputs, self._prehiddens], self._canvas)
+        self.recons_from_inputs = theano.function([self.inputs], self._canvas)
         #self.selection = theano.function([self.inputs], (self._prehiddens > self.selectionthreshold))
 
     def updateparams(self, newparams):
