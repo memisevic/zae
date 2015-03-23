@@ -10,8 +10,8 @@ from theano.tensor.shared_randomstreams import RandomStreams
 rng = numpy.random.RandomState(1)
 theano_rng = RandomStreams(1)
 SMALL = 0.001
-patchsize = 30 
-numfeatures = 100 
+patchsize = 16 
+numfeatures = 225 
 
 
 import os
@@ -53,7 +53,7 @@ trainimages = (numpy.concatenate([(numpy.load(CIFARDATADIR+'/data_batch_'+b)['da
 
 #CROP PATCHES
 print "cropping patches"
-trainpatches = numpy.concatenate([crop_patches_color(im.reshape(3, 32, 32).transpose(1,2,0), numpy.array([numpy.random.randint(patchsize/2, 32-patchsize/2, 40), numpy.random.randint(patchsize/2, 32-patchsize/2, 40)]).T, patchsize) for im in trainimages])
+trainpatches = numpy.concatenate([crop_patches_color(im.reshape(3, 32, 32).transpose(1,2,0), numpy.array([numpy.random.randint(patchsize/2, 32-patchsize/2, 200), numpy.random.randint(patchsize/2, 32-patchsize/2, 200)]).T, patchsize) for im in trainimages])
 R = rng.permutation(trainpatches.shape[0])
 trainpatches = trainpatches[R, :]
 print "numpatches: ", trainpatches.shape[0]
@@ -79,18 +79,18 @@ model = zaethroughtime.Zae(rng,numvis=trainpatches_whitened.shape[1], numhid=num
 
 
 
-assert False, "preprocessing is done, may train now"
+##DO SOME STEPS WITH SMALL LEARNING RATE TO MAKE SURE THE INITIALIZATION IS IN A REASONABLE RANGE
+#trainer = train.GraddescentMinibatch(model, trainpatches_theano, 100, learningrate=0.0001, momentum=0.9)
+##trainer = graddescent_rewrite.SGD_Trainer(model, trainpatches_whitened, batchsize=128, learningrate=0.001, momentum=0.9, loadsize=30000, gradient_clip_threshold=5.0)
+#trainer.step(); trainer.step(); trainer.step() 
 
-
-#DO SOME STEPS WITH SMALL LEARNING RATE TO MAKE SURE THE INITIALIZATION IS IN A REASONABLE RANGE
-trainer = train.GraddescentMinibatch(model, trainpatches_theano, 100, learningrate=0.0001, momentum=0.9)
-#trainer = graddescent_rewrite.SGD_Trainer(model, trainpatches_whitened, batchsize=128, learningrate=0.001, momentum=0.9, loadsize=30000, gradient_clip_threshold=5.0)
-trainer.step(); trainer.step(); trainer.step() 
 
 #TRAIN THE MODEL FOR REAL, AND SHOW FILTERS 
-trainer = train.GraddescentMinibatch(model, trainpatches_theano, 100, learningrate=0.01, momentum=0.9)
-#trainer = graddescent_rewrite.SGD_Trainer(model, trainpatches_whitened, batchsize=128, learningrate=0.1, momentum=0.9, loadsize=30000, gradient_clip_threshold=5.0)                                          
+import graddescent_rewrite
+#trainer = train.GraddescentMinibatch(model, trainpatches_theano, 100, learningrate=0.01, momentum=0.9)
+trainer = graddescent_rewrite.SGD_Trainer(model, trainpatches_whitened, batchsize=128, learningrate=0.1, momentum=0.9, loadsize=30000, gradient_clip_threshold=5.0)                                          
 
+assert False, "preprocessing is done, may train now"
 
 for epoch in xrange(100):
     trainer.step()
