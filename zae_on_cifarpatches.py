@@ -2,7 +2,8 @@ import numpy
 import numpy.random
 import pylab
 from dispims_color import dispims_color
-import zae 
+#import zae 
+import switchingzae as zae
 import train
 import theano
 from theano.tensor.shared_randomstreams import RandomStreams
