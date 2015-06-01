@@ -54,6 +54,7 @@ class GraddescentMinibatchDiscreteThresholdSearch(object):
         self.data_numpy    = data
         self.data_theano   = theano.shared(self.data_numpy)
         self.learningrate  = learningrate
+        self.mutationrate  = 0.0001
         self.verbose       = verbose
         self.batchsize     = batchsize
         self.numbatches    = self.data_theano.get_value().shape[0] / batchsize
@@ -99,15 +100,16 @@ class GraddescentMinibatchDiscreteThresholdSearch(object):
             stepcount += 1.0
             cost = (1.0-1.0/stepcount)*cost + (1.0/stepcount)*self._updateincs(batch_index)
             self._trainmodel(0)
-            for i in range(10):
-                oldcost = model.cost(self.data_numpy[batch_index*self.batchsize:(batch_index+1)*self.batchsize])
-                oldselectionthreshold = model.selectionthreshold.get_value()
-                newselectionthreshold = oldselectionthreshold + self.rng.randn(*oldselectionthreshold.shape).astype("float32")*0.0001
-                newselectionthreshold *= newselectionthreshold > 0.0
-                self.model.selectionthreshold.set_value(newselectionthreshold)
-                newcost = model.cost(self.data_numpy[batch_index*self.batchsize:(batch_index+1)*self.batchsize])
-                if newcost > oldcost:
-                    self.model.selectionthreshold.set_value(oldselectionthreshold)
+
+        for i in range(10):
+            oldcost = self.model.cost(self.data_numpy)
+            oldselectionthreshold = self.model.selectionthreshold.get_value()
+            newselectionthreshold = oldselectionthreshold + self.rng.randn(*oldselectionthreshold.shape).astype("float32")*self.mutationrate
+            newselectionthreshold *= newselectionthreshold > 0.0
+            self.model.selectionthreshold.set_value(newselectionthreshold)
+            newcost = self.model.cost(self.data_numpy)
+            if newcost > oldcost:
+                self.model.selectionthreshold.set_value(oldselectionthreshold)
 
         self.epochcount += 1
         if self.verbose:
@@ -120,7 +122,7 @@ trainimages = (numpy.concatenate([(numpy.load(CIFARDATADIR+'/data_batch_'+b)['da
 
 #CROP PATCHES
 print "cropping patches"
-trainpatches = numpy.concatenate([crop_patches_color(im.reshape(3, 32, 32).transpose(1,2,0), numpy.array([numpy.random.randint(patchsize/2, 32-patchsize/2, 40), numpy.random.randint(patchsize/2, 32-patchsize/2, 40)]).T, patchsize) for im in trainimages])
+trainpatches = numpy.concatenate([crop_patches_color(im.reshape(3, 32, 32).transpose(1,2,0), numpy.array([numpy.random.randint(patchsize/2, 32-patchsize/2, 400), numpy.random.randint(patchsize/2, 32-patchsize/2, 400)]).T, patchsize) for im in trainimages])
 R = rng.permutation(trainpatches.shape[0])
 trainpatches = trainpatches[R, :]
 print "numpatches: ", trainpatches.shape[0]
