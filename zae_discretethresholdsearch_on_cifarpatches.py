@@ -11,7 +11,7 @@ from theano.tensor.shared_randomstreams import RandomStreams
 rng = numpy.random.RandomState(1)
 theano_rng = RandomStreams(1)
 SMALL = 0.001
-patchsize = 20
+patchsize = 12
 numfeatures = 400
 
 
