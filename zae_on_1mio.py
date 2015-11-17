@@ -9,7 +9,7 @@ import zae
 import train
 import theano
 import theano.tensor as T
-#import graddescent_rewrite
+import graddescent_rewrite
 
 rng = numpy.random.RandomState(1)
 numfeatures = 4096
@@ -51,7 +51,7 @@ trainimages = numpy.dot(trainimages, pca_backward.T)
 
 
 print "instantiating model" 
-model = zae.Zae(numvis=trainimages.shape[1], numhid=numfeatures, vistype="real", init_features=0.01*trainimages[:numfeatures].T, selectionthreshold=1.0) 
+model = zae.Zae(numvis=trainimages.shape[1], numhid=numfeatures, vistype="real", init_features=0.01*trainimages[:numfeatures].T, selectionthreshold=1.0, weightcost=0.1) 
 print "done"
 print "instantiating trainer"
 trainer = graddescent_rewrite.SGD_Trainer(model=model, inputs=trainimages, batchsize=128, learningrate=0.01, gradient_clip_threshold=5.0, loadsize=300000)

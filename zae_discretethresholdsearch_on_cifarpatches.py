@@ -54,7 +54,7 @@ class GraddescentMinibatchDiscreteThresholdSearch(object):
         self.data_numpy    = data
         self.data_theano   = theano.shared(self.data_numpy)
         self.learningrate  = learningrate
-        self.mutationrate  = 0.0001
+        self.mutationrate  = 0.01
         self.verbose       = verbose
         self.batchsize     = batchsize
         self.numbatches    = self.data_theano.get_value().shape[0] / batchsize
@@ -101,15 +101,17 @@ class GraddescentMinibatchDiscreteThresholdSearch(object):
             cost = (1.0-1.0/stepcount)*cost + (1.0/stepcount)*self._updateincs(batch_index)
             self._trainmodel(0)
 
-        for i in range(10):
-            oldcost = self.model.cost(self.data_numpy)
-            oldselectionthreshold = self.model.selectionthreshold.get_value()
-            newselectionthreshold = oldselectionthreshold + self.rng.randn(*oldselectionthreshold.shape).astype("float32")*self.mutationrate
-            newselectionthreshold *= newselectionthreshold > 0.0
-            self.model.selectionthreshold.set_value(newselectionthreshold)
-            newcost = self.model.cost(self.data_numpy)
-            if newcost > oldcost:
-                self.model.selectionthreshold.set_value(oldselectionthreshold)
+        for i in range(1):
+            for j in range(self.model.numhid):
+                oldcost = self.model.cost(self.data_numpy)
+                oldselectionthreshold = self.model.selectionthreshold.get_value()
+                newselectionthreshold = oldselectionthreshold 
+                newselectionthreshold[j] = oldselectionthreshold[j] + self.rng.randn(1).astype("float32")*self.mutationrate
+                newselectionthreshold[j] *= newselectionthreshold[j] > 0.0
+                self.model.selectionthreshold.set_value(newselectionthreshold)
+                newcost = self.model.cost(self.data_numpy)
+                if newcost > oldcost:
+                    self.model.selectionthreshold.set_value(oldselectionthreshold)
 
         self.epochcount += 1
         if self.verbose:

@@ -2,8 +2,8 @@ import numpy
 import numpy.random
 import pylab
 from dispims_color import dispims_color
-#import zae 
-import switchingzae as zae
+import zae 
+#import zaedropout as zae
 import train
 import theano
 from theano.tensor.shared_randomstreams import RandomStreams
@@ -11,8 +11,8 @@ from theano.tensor.shared_randomstreams import RandomStreams
 rng = numpy.random.RandomState(1)
 theano_rng = RandomStreams(1)
 SMALL = 0.001
-patchsize = 20
-numfeatures = 400
+patchsize = 10
+numfeatures = 255
 
 
 import os
@@ -54,7 +54,7 @@ trainimages = (numpy.concatenate([(numpy.load(CIFARDATADIR+'/data_batch_'+b)['da
 
 #CROP PATCHES
 print "cropping patches"
-trainpatches = numpy.concatenate([crop_patches_color(im.reshape(3, 32, 32).transpose(1,2,0), numpy.array([numpy.random.randint(patchsize/2, 32-patchsize/2, 40), numpy.random.randint(patchsize/2, 32-patchsize/2, 40)]).T, patchsize) for im in trainimages])
+trainpatches = numpy.concatenate([crop_patches_color(im.reshape(3, 32, 32).transpose(1,2,0), numpy.array([numpy.random.randint(patchsize/2, 32-patchsize/2, 400), numpy.random.randint(patchsize/2, 32-patchsize/2, 400)]).T, patchsize) for im in trainimages])
 R = rng.permutation(trainpatches.shape[0])
 trainpatches = trainpatches[R, :]
 print "numpatches: ", trainpatches.shape[0]
@@ -75,7 +75,7 @@ trainpatches_theano = theano.shared(trainpatches_whitened)
 print "done"
 
 #INSTANTIATE THE ZERO-BIAS AUTOENCODER
-model = zae.Zae(numvis=trainpatches_whitened.shape[1], numhid=numfeatures, vistype="real", init_features=0.1*trainpatches_whitened[:numfeatures].T, selectionthreshold=1.0)
+model = zae.Zae(numvis=trainpatches_whitened.shape[1], numhid=numfeatures, vistype="real", init_features=0.1*trainpatches_whitened[:numfeatures].T, selectionthreshold=1.0, weightcost=0.0)
 
 assert False, "preprocessing is done, may train now"
 
